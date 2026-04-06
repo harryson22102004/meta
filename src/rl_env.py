@@ -286,22 +286,23 @@ class ChaosLabEnv(gym.Env):
         self._env = active_env
         self._episode_reward = 0.0
         
+        # Initialize the observation text from the active environment
+        view = active_env._view()
+        self._last_output = (
+            f"=== SCENARIO: {active_env.task.nm} ===\n"
+            f"Instructions:\n{active_env.task.guide()}\n\n"
+            f"Current Directory: {view['current_directory']}\n"
+            f"Processes:\n{view['processes']}\n"
+            f"Files:\n{view['filesystem']}\n"
+            f"Max Steps: {active_env.limit}\n"
+        )
+        
     def get_current_obs(self) -> np.ndarray:
         """Grabs the current state for predicting actions on a hijacked env"""
         if not self._env:
             return np.zeros(self.max_obs_len, dtype=np.int32)
             
-        view = self._env._view()
-        
-        obs_text = (
-            f"=== SCENARIO: {self._env.task.nm} ===\n"
-            f"Instructions:\n{self._env.task.guide()}\n\n"
-            f"Current Directory: {view['current_directory']}\n"
-            f"Processes:\n{view['processes']}\n"
-            f"Files:\n{view['filesystem']}\n"
-            f"Max Steps: {self._env.limit}\n"
-        )
-        return self._encode_obs(obs_text)
+        return self._encode_obs(self._last_output)
 
     # ── Helpers ────────────────────────────────────────────────────
 

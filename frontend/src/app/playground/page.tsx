@@ -38,7 +38,7 @@ function PlaygroundContent() {
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
   const [activeModelName, setActiveModelName] = useState<string | null>(null);
   const [availableModels, setAvailableModels] = useState<any[]>([]);
-  const [selectedModel, setSelectedModel] = useState("ppo");
+  const [selectedModel, setSelectedModel] = useState("a2c");
   const [showModelMenu, setShowModelMenu] = useState(false);
   
   const ws = useRef<WebSocket | null>(null);

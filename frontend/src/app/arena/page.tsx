@@ -11,8 +11,8 @@ export default function ArenaPage() {
   const [commandsB, setCommandsB] = useState("ls -la\ncat /var/log/app.log");
   const [typeA, setTypeA] = useState<string>("script");
   const [typeB, setTypeB] = useState<string>("rl");
-  const [modelA, setModelA] = useState<string>("ppo");
-  const [modelB, setModelB] = useState<string>("heuristic");
+  const [modelA, setModelA] = useState<string>("a2c");
+  const [modelB, setModelB] = useState<string>("qlearning");
   const [availableModels, setAvailableModels] = useState<any[]>([]);
   
   const [isRacing, setIsRacing] = useState(false);

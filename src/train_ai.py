@@ -5,12 +5,12 @@ Trains CPU-based RL models on the ChaosLab SRE environment
 and saves them to the models/ directory.
 
 Models:
-  - PPO (Neural Network, via stable-baselines3)
+  - A2C (Neural Network, via stable-baselines3)
   - Q-Learning (Tabular, pure Python — NO neural network)
 
 Usage:
     python -m src.train_ai                    # Train all models
-    python -m src.train_ai --algo ppo         # Train only PPO
+    python -m src.train_ai --algo a2c         # Train only A2C
     python -m src.train_ai --algo qlearning   # Train only Q-Learning
     python -m src.train_ai --steps 10000      # Override training steps
 """
@@ -28,12 +28,12 @@ DEFAULT_STEPS = 10_000
 DEFAULT_QL_EPISODES = 200
 
 
-def train_ppo(total_timesteps: int, scenario: str = "full_incident"):
-    """Train PPO (Neural Network) model."""
-    from stable_baselines3 import PPO
+def train_a2c(total_timesteps: int, scenario: str = "full_incident"):
+    """Train A2C (Neural Network) model."""
+    from stable_baselines3 import A2C
 
     print(f"\n{'='*60}")
-    print(f"  TRAINING: PPO (Proximal Policy Optimization)")
+    print(f"  TRAINING: A2C (Advantage Actor-Critic)")
     print(f"  Type: Neural Network (MLP)")
     print(f"  Steps: {total_timesteps:,}")
     print(f"  Scenario: {scenario}")
@@ -41,15 +41,15 @@ def train_ppo(total_timesteps: int, scenario: str = "full_incident"):
 
     env = gym.make("ChaosLab-v0", scenario=scenario)
 
-    model = PPO(
+    # Use a tiny 32x32 network to ensure CPU solving is extremely fast
+    model = A2C(
         "MlpPolicy", env,
-        learning_rate=3e-4,
-        n_steps=256,
-        batch_size=64,
-        n_epochs=10,
+        learning_rate=7e-4,
+        n_steps=5,
         gamma=0.99,
         ent_coef=0.01,
         verbose=1,
+        policy_kwargs=dict(net_arch=[32, 32]),
     )
 
     start_time = time.time()
@@ -57,13 +57,13 @@ def train_ppo(total_timesteps: int, scenario: str = "full_incident"):
     elapsed = time.time() - start_time
 
     os.makedirs(MODELS_DIR, exist_ok=True)
-    out_path = os.path.join(MODELS_DIR, "ppo_model")
+    out_path = os.path.join(MODELS_DIR, "a2c_model")
     model.save(out_path)
 
     file_size = os.path.getsize(out_path + ".zip") / (1024 * 1024)
 
     print(f"\n{'='*60}")
-    print(f"  ✓ PPO TRAINING COMPLETE")
+    print(f"  ✓ A2C TRAINING COMPLETE")
     print(f"  Time:  {elapsed:.1f}s")
     print(f"  Saved: {out_path}.zip ({file_size:.2f} MB)")
     print(f"{'='*60}\n")
@@ -121,7 +121,7 @@ def train_qlearning(total_timesteps: int, scenario: str = "full_incident"):
 
 
 ALGO_TRAINERS = {
-    "ppo": train_ppo,
+    "a2c": train_a2c,
     "qlearning": train_qlearning,
 }
 
@@ -130,7 +130,7 @@ def train_all(total_timesteps: int, scenario: str = "full_incident"):
     """Train all available algorithms sequentially."""
     print("\n" + "=" * 60)
     print("   CHAOSLAB MULTI-MODEL TRAINING PIPELINE")
-    print(f"   Models: PPO (Neural Net) + Q-Learning (Tabular)")
+    print(f"   Models: A2C (Neural Net) + Q-Learning (Tabular)")
     print(f"   Steps: {total_timesteps:,}")
     print("=" * 60)
 

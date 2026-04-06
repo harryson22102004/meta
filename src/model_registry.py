@@ -5,16 +5,15 @@ Auto-discovers trained models in the `models/` directory and provides
 a unified interface for loading and listing them.
 
 Supported model types:
-  - stable-baselines3 PPO (.zip files)
+  - stable-baselines3 A2C (.zip files)
   - Tabular Q-Learning (.json files)
-  - HeuristicAgent (built-in, always available)
 
 Usage:
     from src.model_registry import ModelRegistry
 
     registry = ModelRegistry()
     info = registry.list_models()       # metadata for all models
-    model = registry.load_model("ppo")  # returns predictor with .predict(obs)
+    model = registry.load_model("a2c")  # returns predictor with .predict(obs)
 """
 
 from __future__ import annotations
@@ -43,13 +42,13 @@ class ModelInfo:
 
 # ── Static catalog of known models ────────────────────────────────
 _MODEL_CATALOG: Dict[str, ModelInfo] = {
-    "ppo": ModelInfo(
-        name="ppo",
-        display_name="PPO Neural Net",
-        algorithm="PPO (Proximal Policy Optimization)",
-        description="On-policy actor-critic with clipped surrogate objective. "
-                    "Good balance of stability and sample efficiency.",
-        file_path=os.path.join(MODELS_DIR, "ppo_model.zip"),
+    "a2c": ModelInfo(
+        name="a2c",
+        display_name="A2C Neural Net",
+        algorithm="A2C (Advantage Actor Critic)",
+        description="Synchronous actor-critic policy gradient model. "
+                    "Very fast to train on CPUs.",
+        file_path=os.path.join(MODELS_DIR, "a2c_model.zip"),
         requires_training=True,
     ),
     "qlearning": ModelInfo(
@@ -60,16 +59,6 @@ _MODEL_CATALOG: Dict[str, ModelInfo] = {
                     "pure Python dict as the brain. Learns state-action values.",
         file_path=os.path.join(MODELS_DIR, "qlearning_model.json"),
         requires_training=True,
-    ),
-    "heuristic": ModelInfo(
-        name="heuristic",
-        display_name="Heuristic Expert",
-        algorithm="Rule-Based Decision Tree",
-        description="Hand-coded SRE expert using keyword detection and "
-                    "prioritized action sequences. No training required.",
-        file_path=None,
-        requires_training=False,
-        available=True,  # always available
     ),
 }
 
@@ -139,22 +128,16 @@ class ModelRegistry:
 
         Returns (predictor, model_info).
         The predictor has a .predict(obs, deterministic=True) method.
-
-        Falls back to heuristic if the requested model is unavailable.
         """
         self._refresh_availability()
 
         info = _MODEL_CATALOG.get(name)
         if not info:
-            # Unknown model name → fallback
-            return self._load_heuristic()
-
-        if name == "heuristic":
-            return self._load_heuristic()
+             # Try fallback to whatever is available
+             return self._load_fallback()
 
         if not info.available:
-            # Model file not found → fallback
-            return self._load_heuristic()
+            return self._load_fallback()
 
         # Check cache
         if name in self._cache:
@@ -162,28 +145,30 @@ class ModelRegistry:
 
         # Load model based on type
         try:
-            if name == "ppo":
-                from stable_baselines3 import PPO
-                model = PPO.load(info.file_path)
+            if name == "a2c":
+                from stable_baselines3 import A2C
+                model = A2C.load(info.file_path)
             elif name == "qlearning":
                 from .qlearning_agent import QLearningAgent
                 model = QLearningAgent.load(info.file_path)
             else:
-                return self._load_heuristic()
+                return self._load_fallback()
 
             self._cache[name] = model
             return model, info
 
         except Exception as e:
             print(f"[ModelRegistry] Error loading {name}: {e}")
-            return self._load_heuristic()
+            return self._load_fallback()
 
-    def _load_heuristic(self) -> Tuple[Any, ModelInfo]:
-        """Load the built-in heuristic expert agent."""
-        if "heuristic" not in self._cache:
-            from .heuristic_agent import HeuristicAgent
-            self._cache["heuristic"] = HeuristicAgent()
-        return self._cache["heuristic"], _MODEL_CATALOG["heuristic"]
+    def _load_fallback(self) -> Tuple[Any, ModelInfo]:
+        """Load a fallback model if requested is unavailable."""
+        if "a2c" in _MODEL_CATALOG and _MODEL_CATALOG["a2c"].available:
+            return self.load_model("a2c")
+        if "qlearning" in _MODEL_CATALOG and _MODEL_CATALOG["qlearning"].available:
+            return self.load_model("qlearning")
+            
+        raise RuntimeError("No models available in _MODEL_CATALOG to fallback to.")
 
     def get_display_name(self, name: str) -> str:
         """Get human-readable display name for a model."""

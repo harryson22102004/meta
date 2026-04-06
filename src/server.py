@@ -393,6 +393,7 @@ async def run_agent_in_background(env_id: str, agent_type: str, model_name: str 
                 model.reset()
 
             done = False
+            used_actions = set()
             while not done and env.step_count < env.limit:
                 await asyncio.sleep(1.2)  # Simulate thinking delay
 
@@ -410,6 +411,22 @@ async def run_agent_in_background(env_id: str, agent_type: str, model_name: str 
 
                 action_arr, _ = model.predict(obs, deterministic=True)
                 action = int(action_arr)
+
+                # Anti-loop mechanism for RL models (prevent ANY repeated action)
+                if action in used_actions:
+                    attempts = 0
+                    while action in used_actions and attempts < 3:
+                        action_arr, _ = model.predict(obs, deterministic=False)
+                        action = int(action_arr)
+                        attempts += 1
+                        
+                    if action in used_actions:
+                        # Model is severely collapsed/overconfident. Force a random unused action.
+                        import random
+                        unused_choices = [i for i in range(len(catalog)) if i not in used_actions]
+                        action = random.choice(unused_choices) if unused_choices else 0
+
+                used_actions.add(action)
                 command = catalog[action]
 
                 # Broadcast the input
@@ -417,6 +434,16 @@ async def run_agent_in_background(env_id: str, agent_type: str, model_name: str 
 
                 # Step the actual TrainingEnv
                 res = env.step(command)
+
+                # Update the hijacked environment's last observation text
+                rl_env._last_output = (
+                    f"$ {command}\n"
+                    f"{res['info'].get('command_output', '')}\n"
+                    f"---\n"
+                    f"Score: {res['info']['task_score']:.2f} | "
+                    f"Step: {res['info']['step']}/{res['info']['max_steps']}"
+                )
+
                 payload = {
                     "type": "output",
                     "command": command,
@@ -520,9 +547,26 @@ async def arena_run(req: ArenaPayload):
                     model.reset()
 
                 done = False
+                used_actions = set()
                 while not done:
                     action_arr, _ = model.predict(obs, deterministic=True)
                     action = int(action_arr)
+
+                    # Anti-loop mechanism to prevent spamming any used command
+                    if action in used_actions:
+                        attempts = 0
+                        while action in used_actions and attempts < 3:
+                            action_arr, _ = model.predict(obs, deterministic=False)
+                            action = int(action_arr)
+                            attempts += 1
+                            
+                        if action in used_actions:
+                            import random
+                            import src.rl_env
+                            unused_choices = [i for i in range(len(src.rl_env.ACTION_CATALOG)) if i not in used_actions]
+                            action = random.choice(unused_choices) if unused_choices else 0
+                            
+                    used_actions.add(action)
 
                     obs, reward, terminated, truncated, info = env.step(action)
                     done = terminated or truncated
