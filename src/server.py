@@ -135,10 +135,11 @@ async def get_model(name: str):
 # ======================================================================
 
 @app.post("/api/v1/env/reset")
-async def reset(req: ResetPayload):
+async def reset(req: Optional[ResetPayload] = None):
     global counter
     try:
-        env = TrainingEnv(scenario=req.scenario)
+        scenario = req.scenario if req else "log_analysis"
+        env = TrainingEnv(scenario=scenario)
         eid = f"env_{counter}"
         counter += 1
         backends[eid] = env
