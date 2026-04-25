@@ -89,6 +89,14 @@ After 200 episodes of training:
 - **Adversary level**: Increases as agent improves
 - **Reward curves**: Smooth improvement across all metrics
 
+![PROMETHEUS Reward Curves — Accuracy improving, hallucination dropping, adversary level rising](metrics/prometheus/reward_curves.png)
+
+## Materials
+
+- **Training Notebook (Colab-ready):** [PROMETHEUS_Training.ipynb](PROMETHEUS_Training.ipynb)
+- **HuggingFace Spaces App:** [app.py](app.py) — Interactive investigation demo
+- **Presentation PDF:** See attached PROMETHEUS_Hackathon.pdf
+
 ## Architecture
 
 ```
